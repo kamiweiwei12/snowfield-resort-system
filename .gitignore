@@ -26,3 +26,6 @@ logs/
 reports/
 jmeter-results/
 coverage/
+
+# AI working memory (duplicates docs/development-log/, not a project fact source)
+.workbuddy/

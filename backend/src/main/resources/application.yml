@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: snowfield-backend
+  datasource:
+    # 端口/库名/账号来自 docker-compose.yml；密码只从环境变量注入，禁止写入仓库。
+    # 显式用 127.0.0.1 + 5433：Windows 上 localhost 先解析到 ::1，且本机可能另有
+    # 原生 PostgreSQL 占用 5432。容器映射到 5433 可避免连错实例。
+    url: ${SNOWFIELD_DB_URL:jdbc:postgresql://127.0.0.1:5433/snowfield}
+    username: ${SNOWFIELD_DB_USER:snowfield}
+    # 刻意不提供默认值：缺少 SNOWFIELD_DB_PASSWORD 时应用启动即失败，
+    # 避免用错误凭据静默连到别的实例。见 .env.example 与 docs/DEVELOPMENT.md。
+    password: ${SNOWFIELD_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    # Flyway 是数据库结构迁移的唯一入口（AGENTS.md §4）。
+    enabled: true
+    locations: classpath:db/migration
+    # 迁移历史表放独立 schema，避免与业务 schema public 混淆。
+    schemas: public
+    create-schemas: true
+    baseline-on-migrate: false
+  # 显式声明：禁止任何自动建表/改表。ORM 自动 DDL 在本项目中不存在，
+  # 此处保留为可审查的显式否定，防止未来引入 JPA 时被默认值悄悄开启。
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+server:
+  port: 8080
+  error:
+    include-stacktrace: never
+    include-message: never
+
+mybatis:
+  # SQL 只允许位于 Mapper 接口旁（XML 同名同包）或注解中，统一在 <module>/infrastructure/persistence 下。
+  mapper-locations: classpath*:edu/sysu/snowfield/**/persistence/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    root: INFO
+    edu.sysu.snowfield: INFO
+
+snowfield:
+  security:
+    # 至少32字节，只从环境变量注入；缺失时安全配置拒绝启动。
+    jwt-secret: ${SNOWFIELD_JWT_SECRET}
+    issuer: https://snowfield.local
+    access-token-ttl: 30m
+    allowed-origin: ${SNOWFIELD_CORS_ALLOWED_ORIGIN:http://localhost:5173}

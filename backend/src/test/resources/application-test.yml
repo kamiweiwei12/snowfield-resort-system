@@ -1,0 +1,19 @@
+# 数据库集成测试专用配置：只覆盖数据源指向独立测试库 snowfield_test。
+#
+# 隔离要求见 docs/ARCHITECTURE.md §7：测试库与开发库 `snowfield` 必须分离，测试不得污染开发库。
+# 测试库由 scripts/test-db-init.ps1 创建（同实例、同账号，不同 database）。
+spring:
+  datasource:
+    url: ${SNOWFIELD_TEST_DB_URL:jdbc:postgresql://127.0.0.1:5433/snowfield_test}
+    username: ${SNOWFIELD_DB_USER:snowfield}
+    # 本地开发/测试沿用 .env 的占位密码；生产与 CI 必须用独立凭据。
+    password: ${SNOWFIELD_DB_PASSWORD:REPLACE_WITH_YOUR_LOCAL_PASSWORD}
+
+# 集成测试直接调用过期服务，不等待后台调度；避免长套件运行期间异步扫描共享测试数据。
+snowfield:
+  order-expiry-initial-delay-ms: 3600000
+  security:
+    jwt-secret: test-only-snowfield-jwt-secret-32-bytes-minimum
+    issuer: https://snowfield.test
+    access-token-ttl: 30m
+    allowed-origin: http://localhost:5173

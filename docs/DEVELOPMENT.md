@@ -1,17 +1,44 @@
 # 开发计划、环境与风险
 
-## 当前仓库状态（2026-11-25）
+## 当前仓库状态（2026-11-28 更新）
 
-- 启动时目录为空且不是 Git 仓库，无 README、AGENTS、Skills、依赖、数据库或提交历史。
-- 已确认本机 Git 2.48.1、Java 21.0.12、Node.js 24.14.1、npm 11.11.0、Docker 29.6.1 可用。
-- 本阶段初始化 Git 和文档骨架，不安装依赖、不启动数据库、不声称存在业务测试结果。
+- 公共契约仍是 `v1.0-rc`：PR #2 可合并但为 `REVIEW_REQUIRED`，0 review，等待 `Janovo2117`；尚不能称为正式冻结。
+- 后端 S1/S2 已完成；PR #3 在 `feature/database-core` 上继续累积不依赖 Review 的实现，同样等待 Review，尚未集成到 `develop`。
+- 数据库已实现 V1~V5；Spring Security/JWT 边界和模拟支付 HTTP 入口已接入；真实 PostgreSQL `-Pdb` 回归 146 个测试通过（TE-20261128-01）。
+- BK-02 application 生命周期已完成，支付 HTTP 已验证从 JWT `sub` 获取用户并执行对象所有权/幂等检查；注册/登录、当前用户、创建/查询/取消订单 HTTP 因 DTO 契约不完整暂缓（R6-11）。BK-01 已接入维修阻断；独立可用性查询和开放规则语义仍有缺口。
+- 前端工程尚未创建。
+- 默认测试已恢复为无数据库构建：13 个单元/架构测试通过；数据库上下文门禁改为 `SnowfieldApplicationIT`，仅在 `-Pdb` 运行（TE-20261127-14）。
 
-## 第2阶段状态（2026-11-25）
+## S2 数据库环境（已验证）
 
-- GitHub远端已接入，`main`、`develop` 和协作准备feature分支已推送。
-- 18项业务确认及D-001=B、D-002=A已追加记录，公共契约仍为 `v1.0-rc` 候选版；尚未完成双人Review。
-- A为朱承威（24325352），B为袁顺熙（24325311）。
-- 基础工程尚未初始化，以下构建/运行命令仍不得记录为通过。
+本机开发环境事实：本机已运行原生 `postgresql-x64-18` 服务占用 `0.0.0.0:5432`，因此项目容器的默认端口是 **5433**。
+
+```powershell
+# 1. 准备环境变量（首次）
+Copy-Item .env.example .env
+
+# 启动后端前必须在当前终端/IDE注入真实值；不要把真实密钥提交到 .env.example。
+$env:SNOWFIELD_DB_PASSWORD = "<local-db-password>"
+$env:SNOWFIELD_JWT_SECRET = "<at-least-32-random-bytes>"
+
+# 2. 启动数据库（映射 5433 -> 容器 5432）
+docker compose up -d db
+
+# 3. 创建隔离测试库 snowfield_test（幂等）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-db-init.ps1
+
+# 4. 默认构建（不连数据库）
+Push-Location backend
+.\mvnw.cmd -B test
+
+# 5. 数据库集成测试（必须显式 -Pdb）
+.\mvnw.cmd -B -Pdb test
+Pop-Location
+```
+
+- 开发库 `snowfield`、测试库 `snowfield_test` 分离，测试不得污染开发库。
+- 密码只通过环境变量 `SNOWFIELD_DB_PASSWORD` 注入，不写入仓库。
+- 测试库证据见 `docs/audit/TEST_EVIDENCE.md` TE-20261126-16。
 
 ## 建议工程初始化（第二阶段）
 
@@ -34,16 +61,18 @@
 | 12/29–12/31 | 性能与系统测试 | JMeter、EXPLAIN证据 |
 | 01/01–01/02 | 报告、视频、重装验证 | 3000字报告、干净环境复现 |
 
-## 测试命令（第二阶段建立后）
+## 测试命令（S2 起）
 
 ```powershell
-./mvnw test
-npm --prefix frontend run lint
-npm --prefix frontend run build
+Push-Location backend
+.\mvnw.cmd -B test              # 单元 + 架构测试，不连数据库
+.\mvnw.cmd -B -Pdb test         # 追加真实 PostgreSQL 集成测试（*IT）
+Pop-Location
+npm --prefix frontend run lint  # 前端工程建立后
 docker compose up -d db
 ```
 
-不得提前把这些命令写成已通过。
+不得提前把尚未执行的命令写成已通过。
 
 ## 主要风险
 
@@ -60,4 +89,4 @@ docker compose up -d db
 
 - A：建立 Spring Boot、Flyway/PostgreSQL、V1基础字典与用户权限、迁移测试。
 - B：建立 React/Vite/Ant Design、路由和 API client，依据契约实现登录/错误状态骨架。
-- 共同：由 `Janovo2117` 审查已同步D-001/D-002的 `CONTRACT_FREEZE v1.0-rc` 并留下真实PR Review；此前禁止工程初始化。
+- 共同：由 `Janovo2117` 审查已同步D-001/D-002的 `CONTRACT_FREEZE v1.0-rc` 并留下真实PR Review；等待期间只继续不改变候选契约语义的实现，正式集成仍需 Review。

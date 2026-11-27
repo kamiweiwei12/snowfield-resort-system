@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>edu.sysu</groupId>
+    <artifactId>snowfield-backend</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>snowfield-backend</name>
+    <description>雪野营地四季度假综合运营与预订管理系统 - 后端</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <archunit.version>1.4.1</archunit.version>
+        <!-- MyBatis starter 不在 Boot BOM 中，必须显式锁版本：4.1.0 官方声明对应 Boot 4.1 -->
+        <mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
+        <!-- 与 Boot 4.1.3 同代；升级前须重新核对父 POM 的 Boot 版本 -->
+        <springdoc.version>3.2.0</springdoc.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web 层（Boot 4.x 中 spring-boot-starter-web 已改名为 webmvc） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- 请求 DTO 校验（Bean Validation） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- S4 安全边界：无状态 Spring Security + JWT Resource Server。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- 数据访问：MyBatis 4.1.0 官方对应 Boot 4.1（见 docs/ARCHITECTURE.md §7 版本矩阵） -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
+        </dependency>
+
+        <!-- PostgreSQL JDBC 驱动：唯一权威数据库 -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Flyway：数据库结构迁移的唯一入口（Boot 4.x 已拆分 starter 与数据库方言模块） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- OpenAPI 文档：3.2.0 的父 POM 为 Boot 4.1.2，与本项目 4.1.3 同代；
+             3.2.1 起已跳到 Boot 4.2.0，与 ADR-012「不用 Boot 4.2」冲突，故锁定 3.2.0。 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- 测试：JUnit + Spring Boot Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- 架构测试：强制分层/模块依赖规则（S1 起随每次构建执行） -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+          `-Pdb` 才运行真实 PostgreSQL 集成测试（*IT）。
+          默认 `./mvnw test` 不连数据库，保证无数据库环境的构建可复现；
+          数据库证据必须由显式 `./mvnw -B -Pdb verify` 产出，不得用默认构建冒充（AGENTS.md §8）。
+        -->
+        <profile>
+            <id>db</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*Test.java</include>
+                                <include>**/*IT.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

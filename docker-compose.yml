@@ -1,0 +1,31 @@
+# 项目名显式声明：本仓库路径含中文，默认从目录名推导会得到非法项目名并报
+# "project name must not be empty"。
+name: snowfield
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: snowfield-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required, see .env.example}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required, see .env.example}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required, see .env.example}
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    ports:
+      # 默认 5433 而非 5432：开发者本机常已装原生 PostgreSQL 占用 5432，
+      # 会造成「连到了本机实例而不是容器」的误判。改容器端口可彻底隔离。
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - snowfield_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  snowfield_pgdata:
+    name: snowfield_pgdata
